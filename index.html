@@ -244,6 +244,13 @@ body.viewer .dear input{pointer-events:none}
         <button class="c" id="bVideo">Vídeo da fita</button>
         <button class="c" id="bCancelVid" hidden>Cancelar</button>
       </div>
+      <label class="fxrow"><span>Aparência do vídeo</span>
+        <select id="vidTheme" aria-label="Aparência do vídeo">
+          <option value="tela">Igual à tela</option>
+          <option value="claro">Claro</option>
+          <option value="escuro">Escuro</option>
+        </select>
+      </label>
       <label class="fxrow" id="bakeRow" hidden><input type="checkbox" id="fxBake" checked> Incluir os efeitos nos arquivos baixados</label>
       <div class="progress" id="vprog" hidden><i></i></div>
       <small>O áudio sai no formato gravado (WebM ou M4A). O WAV abre em qualquer aparelho, mas o arquivo é maior. O vídeo mostra a fita girando e é gerado em tempo real, então leva o mesmo tempo do áudio.</small>
@@ -663,48 +670,58 @@ body.viewer .dear input{pointer-events:none}
     } catch (e) { console.error(e); msg('Não foi possível converter o áudio neste navegador.'); }
   }
 
-  // Quadro do vídeo: a fita desenhada no canvas
-  function stripes(ctx, x, y, w, h){
+  // Quadro do vídeo: a fita desenhada no canvas (paleta clara ou escura)
+  const PAL = {
+    light: { bg1: '#f5f8f9', bg2: '#e8eef1', shadow: 'rgba(40,60,70,.35)', shell: '#fbfbfa', shellLine: '#e3e3e0', stripeBase: '#fff', stripe: '#cfcfcf', paper: '#fff',
+             deck: '#f4f4f2', deckLine: '#d6d6d2', reel: '#fff', reelLine: '#dcdcd9', spoke: '#c7c7c4', ink: '#2a2a2a', red: '#c4401b', bar: '#cdd5d9', muted: '#5f6a70' },
+    dark:  { bg1: '#1b2226', bg2: '#12171a', shadow: 'rgba(0,0,0,.65)', shell: '#2b3034', shellLine: '#3b4349', stripeBase: '#2f353a', stripe: '#4a535a', paper: '#383f45',
+             deck: '#23282c', deckLine: '#3b4349', reel: '#3a4147', reelLine: '#566067', spoke: '#7b868d', ink: '#e9eef0', red: '#ff8a5c', bar: '#38444a', muted: '#9aa7ad' }
+  };
+  const videoPalette = () => {
+    const v = $('#vidTheme').value;
+    return PAL[(v === 'tela' ? document.documentElement.dataset.theme : (v === 'escuro' ? 'dark' : 'light')) === 'dark' ? 'dark' : 'light'];
+  };
+  function stripes(ctx, x, y, w, h, p){
     ctx.save(); ctx.beginPath(); ctx.roundRect(x, y, w, h, 8); ctx.clip();
-    ctx.fillStyle = '#fff'; ctx.fillRect(x, y, w, h);
-    ctx.strokeStyle = '#cfcfcf'; ctx.lineWidth = 1; ctx.beginPath();
+    ctx.fillStyle = p.stripeBase; ctx.fillRect(x, y, w, h);
+    ctx.strokeStyle = p.stripe; ctx.lineWidth = 1; ctx.beginPath();
     for (let k = -h; k < w; k += 6) { ctx.moveTo(x + k, y); ctx.lineTo(x + k + h, y + h); }
     ctx.stroke(); ctx.restore();
   }
-  function reelShape(ctx, cx, cy, r, ang){
-    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(cx, cy, r, 0, 7); ctx.fill();
-    ctx.strokeStyle = '#dcdcd9'; ctx.lineWidth = 5; ctx.stroke();
-    ctx.save(); ctx.translate(cx, cy); ctx.rotate(ang); ctx.fillStyle = '#c7c7c4';
+  function reelShape(ctx, cx, cy, r, ang, p){
+    ctx.fillStyle = p.reel; ctx.beginPath(); ctx.arc(cx, cy, r, 0, 7); ctx.fill();
+    ctx.strokeStyle = p.reelLine; ctx.lineWidth = 5; ctx.stroke();
+    ctx.save(); ctx.translate(cx, cy); ctx.rotate(ang); ctx.fillStyle = p.spoke;
     for (let i = 0; i < 6; i++) {
       const a = i * Math.PI / 3;
       ctx.beginPath(); ctx.arc(0, 0, r * .68, a, a + .42); ctx.arc(0, 0, r * .26, a + .42, a, true); ctx.closePath(); ctx.fill();
     }
     ctx.restore();
   }
-  function drawFrame(ctx, t, dur, name, sideIdx){
+  function drawFrame(ctx, t, dur, name, sideIdx, p){
     const W = 960, H = 540;
-    const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#f5f8f9'); g.addColorStop(1, '#e8eef1');
+    const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, p.bg1); g.addColorStop(1, p.bg2);
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
     const tx = 120, ty = 22, tw = 720, th = 444;
-    ctx.save(); ctx.shadowColor = 'rgba(40,60,70,.35)'; ctx.shadowBlur = 30; ctx.shadowOffsetY = 14;
-    ctx.fillStyle = '#fbfbfa'; ctx.beginPath(); ctx.roundRect(tx, ty, tw, th, 18); ctx.fill(); ctx.restore();
-    ctx.strokeStyle = '#e3e3e0'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.roundRect(tx, ty, tw, th, 18); ctx.stroke();
+    ctx.save(); ctx.shadowColor = p.shadow; ctx.shadowBlur = 30; ctx.shadowOffsetY = 14;
+    ctx.fillStyle = p.shell; ctx.beginPath(); ctx.roundRect(tx, ty, tw, th, 18); ctx.fill(); ctx.restore();
+    ctx.strokeStyle = p.shellLine; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.roundRect(tx, ty, tw, th, 18); ctx.stroke();
 
     const topX = tx + tw * 0.1, topY = ty + 20, topW = tw * 0.8, topH = 67;
-    stripes(ctx, topX, topY, topW, topH);
+    stripes(ctx, topX, topY, topW, topH, p);
     ctx.font = 'bold 27px "Arial Narrow", Arial, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     const label = 'HEAR MY BEST WISHES', lw = ctx.measureText(label).width + 36;
-    ctx.fillStyle = '#fff'; ctx.fillRect(tx + tw / 2 - lw / 2, topY + 14, lw, topH - 28);
-    ctx.fillStyle = '#c4401b'; ctx.fillText(label, tx + tw / 2, topY + topH / 2 + 1);
+    ctx.fillStyle = p.paper; ctx.fillRect(tx + tw / 2 - lw / 2, topY + 14, lw, topH - 28);
+    ctx.fillStyle = p.red; ctx.fillText(label, tx + tw / 2, topY + topH / 2 + 1);
 
     const fx = tx + 29, fy = topY + topH + 16, fw = tw - 58, fh = 223;
-    stripes(ctx, fx, fy, fw, fh);
+    stripes(ctx, fx, fy, fw, fh, p);
     const dx = fx + 26, dw = fw - 52 - 110, dh = 150, dy = fy + (fh - dh) / 2, cy = dy + dh / 2;
-    ctx.fillStyle = '#f4f4f2'; ctx.beginPath(); ctx.roundRect(dx, dy, dw, dh, 14); ctx.fill();
-    ctx.strokeStyle = '#d6d6d2'; ctx.lineWidth = 1; ctx.stroke();
+    ctx.fillStyle = p.deck; ctx.beginPath(); ctx.roundRect(dx, dy, dw, dh, 14); ctx.fill();
+    ctx.strokeStyle = p.deckLine; ctx.lineWidth = 1; ctx.stroke();
     const ang = t * 2.86;
-    reelShape(ctx, dx + 18 + 44, cy, 44, ang);
-    reelShape(ctx, dx + dw - 18 - 44, cy, 44, ang);
+    reelShape(ctx, dx + 18 + 44, cy, 44, ang, p);
+    reelShape(ctx, dx + dw - 18 - 44, cy, 44, ang, p);
 
     const vx = dx + 18 + 88 + 14, vw = dw - 2 * (18 + 88 + 14), vh = 70, vy = cy - vh / 2;
     ctx.fillStyle = '#0c0c0c'; ctx.beginPath(); ctx.roundRect(vx, vy, vw, vh, 14); ctx.fill();
@@ -719,19 +736,19 @@ body.viewer .dear input{pointer-events:none}
     ctx.moveTo(0, 16); ctx.bezierCurveTo(-22, 4, -18, -12, -7, -12); ctx.bezierCurveTo(-3, -12, 0, -9, 0, -6);
     ctx.bezierCurveTo(0, -9, 3, -12, 7, -12); ctx.bezierCurveTo(18, -12, 22, 4, 0, 16); ctx.fill(); ctx.restore();
 
-    ctx.fillStyle = '#2a2a2a'; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+    ctx.fillStyle = p.ink; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
     ctx.font = 'bold 76px "Arial Narrow", Arial, sans-serif'; ctx.fillText(sideIdx ? 'B' : 'A', dx + dw + 24, cy + 6);
     ctx.font = 'bold 22px Arial, sans-serif'; ctx.fillText('Side', dx + dw + 24, cy + 32);
 
     const ex = tx + tw * 0.03, ey = ty + th - 18 - 84, ew = tw * 0.94;
-    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.roundRect(ex, ey, ew, 84, [4, 4, 16, 16]); ctx.fill();
-    ctx.fillStyle = '#2a2a2a'; ctx.font = 'bold 24px Arial, sans-serif'; ctx.fillText('Dear:', ex + 28, ey + 34);
+    ctx.fillStyle = p.paper; ctx.beginPath(); ctx.roundRect(ex, ey, ew, 84, [4, 4, 16, 16]); ctx.fill();
+    ctx.fillStyle = p.ink; ctx.font = 'bold 24px Arial, sans-serif'; ctx.fillText('Dear:', ex + 28, ey + 34);
     ctx.font = '24px Arial, sans-serif'; ctx.fillText(name.slice(0, 40), ex + 28 + 66, ey + 34);
     ctx.fillRect(ex + 24, ey + 42, ew - 48, 1.5); ctx.fillRect(ex + 24, ey + 66, ew - 48, 1.5);
 
-    ctx.fillStyle = '#cdd5d9'; ctx.beginPath(); ctx.roundRect(tx, 492, tw, 6, 3); ctx.fill();
-    ctx.fillStyle = '#c4401b'; ctx.beginPath(); ctx.roundRect(tx, 492, Math.max(6, tw * Math.min(1, t / dur)), 6, 3); ctx.fill();
-    ctx.fillStyle = '#5f6a70'; ctx.font = '20px Arial, sans-serif'; ctx.textAlign = 'center';
+    ctx.fillStyle = p.bar; ctx.beginPath(); ctx.roundRect(tx, 492, tw, 6, 3); ctx.fill();
+    ctx.fillStyle = p.red; ctx.beginPath(); ctx.roundRect(tx, 492, Math.max(6, tw * Math.min(1, t / dur)), 6, 3); ctx.fill();
+    ctx.fillStyle = p.muted; ctx.font = '20px Arial, sans-serif'; ctx.textAlign = 'center';
     ctx.fillText(fmt(t) + ' / ' + fmt(dur), W / 2, 526);
   }
 
@@ -766,14 +783,15 @@ body.viewer .dear input{pointer-events:none}
       mr.ondataavailable = e => { if (e.data.size) parts.push(e.data); };
       const stopped = new Promise(res => { mr.onstop = res; });
       const name = ($('#dear').value || tape.dear || '').trim();
-      drawFrame(ctx, 0, total, name, side);
+      const pal = videoPalette();   // aparência fixada no início da geração
+      drawFrame(ctx, 0, total, name, side, pal);
       mr.start(1000); src.start();
       const t0 = performance.now();
       msg('Gerando o vídeo em tempo real. Mantenha esta aba aberta e visível até terminar.');
       await new Promise(res => {
         const timer = setInterval(() => {
           const t = (performance.now() - t0) / 1000;
-          drawFrame(ctx, Math.min(t, total), total, name, side);
+          drawFrame(ctx, Math.min(t, total), total, name, side, pal);
           $('#vprog i').style.width = Math.min(100, t / total * 100) + '%';
           if (t >= total + 0.3 || cancelVid) { clearInterval(timer); res(); }
         }, 33);
