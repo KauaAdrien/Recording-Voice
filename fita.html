@@ -257,8 +257,8 @@ body.viewer .dear input{pointer-events:none}
   const MAX = 300; // 5 minutos por lado
 
   // ?? Configuração do Supabase (veja o passo a passo). Deixe como está para testar só no navegador.
-  const SUPABASE_URL = 'https://ijwxcqzznmhtgvwamfpa.supabase.co';          // ex.: https://abcdxyz.supabase.co
-  const SUPABASE_KEY = 'sb_publishable_C1xssMJIb_LrA94nMWqmZA_wvm34X13';       // começa com sb_publishable_ (nunca use a chave secret)
+  const SUPABASE_URL = 'https://ijwxcqzznmhtgvwamfpa.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_C1xssMJIb_LrA94nMWqmZA_wvm34X13';
   const BUCKET = 'fitas';
   const remote = /^https:\/\/[a-z0-9-]+\.supabase\.co/i.test(SUPABASE_URL) && SUPABASE_KEY.length > 20 && !!window.supabase;
   const sb = remote ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
