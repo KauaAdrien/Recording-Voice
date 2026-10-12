@@ -1,0 +1,29 @@
+# Mantém o projeto Supabase gratuito ativo.
+# Salve este arquivo no seu repositório como: .github/workflows/keepalive.yml
+# Requer dois "secrets" no repositório: SUPABASE_URL e SUPABASE_KEY (a chave publishable).
+
+name: Manter Supabase ativo
+
+on:
+  schedule:
+    - cron: '0 12 */3 * *'   # dias 1, 4, 7... do mês, às 12:00 UTC (intervalo máximo de 3 dias)
+  workflow_dispatch:          # permite rodar manualmente pela aba Actions
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Consultar o projeto
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: |
+          # Busca uma fita que não existe: o servidor responde 200 com lista vazia, sem expor nada.
+          status=$(curl -s -o /dev/null -w "%{http_code}" \
+            -X POST "$SUPABASE_URL/rest/v1/rpc/get_fita" \
+            -H "apikey: $SUPABASE_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{"p_id":"keepalive"}')
+          echo "Resposta do Supabase: $status"
+          # Falha de propósito se não for 200, para o GitHub avisar você por e-mail.
+          test "$status" = "200"
