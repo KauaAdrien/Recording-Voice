@@ -15,8 +15,8 @@ jobs:
     steps:
       - name: Consultar o projeto
         env:
-          SUPABASE_URL: ${{ secrets.https://ijwxcqzznmhtgvwamfpa.supabase.co }}
-          SUPABASE_KEY: ${{ secrets.sb_publishable_C1xssMJIb_LrA94nMWqmZA_wvm34X13 }}
+          SUPABASE_URL: ${{ https://ijwxcqzznmhtgvwamfpa.supabase.co }}
+          SUPABASE_KEY: ${{ sb_publishable_C1xssMJIb_LrA94nMWqmZA_wvm34X13 }}
         run: |
           # Busca uma fita que não existe: o servidor responde 200 com lista vazia, sem expor nada.
           status=$(curl -s -o /dev/null -w "%{http_code}" \
